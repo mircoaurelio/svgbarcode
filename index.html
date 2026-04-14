@@ -818,18 +818,39 @@
             el.addEventListener('change', refresh);
         });
 
-        // --- Sidebar view switcher ---
-        const views = document.querySelectorAll('[data-view]');
+        // --- Sidebar view switcher (URL-driven) ---
+        const VALID_VIEWS = ['codifica', 'esempi'];
+
+        function applyView(view, opts) {
+            opts = opts || {};
+            if (VALID_VIEWS.indexOf(view) === -1) view = 'codifica';
+            document.querySelectorAll('.side-nav a[data-view]').forEach(x => {
+                x.classList.toggle('active', x.dataset.view === view);
+            });
+            document.querySelectorAll('.card[data-view]').forEach(c => {
+                c.hidden = c.dataset.view !== view;
+            });
+            if (view === 'esempi') renderExamples();
+            if (opts.pushHistory) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('view', view);
+                history.pushState({ view: view }, '', url);
+            }
+        }
+
+        function currentUrlView() {
+            const v = new URLSearchParams(window.location.search).get('view');
+            return VALID_VIEWS.indexOf(v) !== -1 ? v : 'codifica';
+        }
+
         document.querySelectorAll('.side-nav a[data-view]').forEach(a => {
             a.addEventListener('click', (e) => {
                 e.preventDefault();
-                const view = a.dataset.view;
-                document.querySelectorAll('.side-nav a').forEach(x => x.classList.toggle('active', x === a));
-                document.querySelectorAll('.card[data-view]').forEach(c => {
-                    c.hidden = c.dataset.view !== view;
-                });
-                if (view === 'esempi') renderExamples();
+                applyView(a.dataset.view, { pushHistory: true });
             });
+        });
+        window.addEventListener('popstate', () => {
+            applyView(currentUrlView());
         });
 
         // --- Esempi grid ---
@@ -925,6 +946,7 @@
         });
 
         refresh();
+        applyView(currentUrlView());
     })();
     </script>
 </body>

@@ -90,12 +90,6 @@
 
         /* Page layout */
         .page { padding: 28px 32px; max-width: 1280px; margin: 0 auto; }
-        .page-title {
-            font-size: 28px;
-            font-weight: 600;
-            color: #2a3f54;
-            margin-bottom: 22px;
-        }
         .content-grid {
             display: grid;
             grid-template-columns: 200px 1fr;
@@ -266,6 +260,61 @@
             letter-spacing: normal;
         }
 
+        .upload-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border: 1px solid #c9d1d9;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 13px;
+            cursor: pointer;
+            color: #2a3f54;
+        }
+        .upload-btn:hover { background: #f4f6f8; }
+        .upload-status {
+            font-size: 12px;
+            color: #6b7a89;
+        }
+        .upload-status.err { color: #b33; }
+        .svg-help {
+            background: #f7f9fb;
+            border: 1px solid #e6eaee;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #4a5d6b;
+            margin-bottom: 14px;
+        }
+        .svg-help summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #2a3f54;
+            list-style: none;
+        }
+        .svg-help summary::before { content: '? '; color: #f26334; font-weight: 700; }
+        .svg-help[open] summary::before { content: '! '; }
+        .svg-help ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+            line-height: 1.5;
+        }
+        .svg-help li { margin-bottom: 4px; }
+        .svg-help code {
+            background: #eef1f4;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 11.5px;
+        }
+
         .preview-stage {
             background: #fafbfc;
             border: 1px solid #e6eaee;
@@ -333,8 +382,6 @@
 
     <!-- Page -->
     <main class="page">
-        <h1 class="page-title">Impostazioni</h1>
-
         <div class="content-grid">
             <nav class="side-nav">
                 <a href="#" class="active">Codifica</a>
@@ -397,16 +444,18 @@
                             <label class="mini-label">Forma
                                 <select id="shape">
                                     <option value="heart">Cuore</option>
-                                    <option value="horse">Cavallo</option>
                                     <option value="cat">Gatto</option>
                                     <option value="fish">Pesce</option>
-                                    <option value="butterfly">Farfalla</option>
+                                    <option value="dove">Colomba</option>
                                     <option value="star">Stella</option>
                                     <option value="bolt">Fulmine</option>
                                     <option value="crown">Corona</option>
                                     <option value="tree">Pino</option>
-                                    <option value="plane">Aereo</option>
-                                    <option value="italy">Italia</option>
+                                    <option value="ghost">Fantasma</option>
+                                    <option value="moon">Luna</option>
+                                    <option value="note">Nota</option>
+                                    <option value="skull">Teschio</option>
+                                    <option value="custom" id="opt-custom" disabled>Personalizzato</option>
                                 </select>
                             </label>
                             <label class="mini-label">Ripetizioni
@@ -416,6 +465,25 @@
                                 </span>
                             </label>
                         </div>
+
+                        <div class="upload-row">
+                            <label class="upload-btn" for="svg-upload">
+                                <span>&#8613; Carica SVG</span>
+                                <input type="file" id="svg-upload" accept=".svg,image/svg+xml" hidden>
+                            </label>
+                            <span class="upload-status" id="upload-status"></span>
+                        </div>
+
+                        <details class="svg-help">
+                            <summary>Come deve essere l'SVG?</summary>
+                            <ul>
+                                <li>Deve contenere uno o più elementi <code>&lt;path d="..."/&gt;</code> che disegnano la silhouette.</li>
+                                <li>Solo forme piene: niente <code>stroke</code>, niente gradienti, niente testo.</li>
+                                <li>Lo sfondo deve essere trasparente; il colore del riempimento non conta (l'SVG è usato come maschera di ritaglio).</li>
+                                <li>Meglio una forma chiusa e compatta: il risultato sarà scalato e centrato in automatico, con il fondo allineato alla striscia del barcode.</li>
+                                <li>Esempi ideali: icone da Font Awesome, Heroicons, SVG Repo, The Noun Project (license permettendo).</li>
+                            </ul>
+                        </details>
 
                         <div class="preview-stage" id="preview-stage"></div>
                     </div>
@@ -437,42 +505,83 @@
 
         const BAR_COLOR = '#4a5d3a';
 
-        // shapes (all drawn on a 500 x 460 canvas)
+        // Silhouette paths. Coordinates are arbitrary — every path gets
+        // bbox-fit at render time, so they always end up centered and with
+        // their bottom edge flush against the barcode strip.
+        // Paths sourced / inspired by open icon sets (Font Awesome Free / Solid,
+        // Game Icons by Lorc, under CC-BY / free licensing) and simplified
+        // into single-path form so they work as clipPath masks.
         const SHAPES = {
+            // Font Awesome Solid: heart
             heart: {
-                path: 'M250,430 C 40,300 0,180 80,100 C 140,40 230,60 250,150 C 270,60 360,40 420,100 C 500,180 460,300 250,430 Z'
+                path: 'M256 448l-32-29.3C117.2 316 0 219.6 0 135.9 0 69.9 52.4 16 117.3 16c38.4 0 75.9 18.7 98.7 50.3C230.5 34.7 268 16 306.7 16 371.6 16 424 69.9 424 135.9c0 83.7-117.2 180.1-224 282.8z'
             },
-            horse: {
-                path: 'M60,380 L60,340 L100,340 L120,300 L100,270 L120,240 L110,200 L130,170 L160,160 L175,120 L200,100 L225,90 L245,70 L270,60 L300,65 L325,80 L345,110 L360,140 L380,150 L410,155 L440,170 L455,200 L450,230 L430,250 L410,265 L405,290 L415,320 L435,340 L455,360 L455,380 L410,380 L410,355 L380,355 L380,380 L330,380 L330,345 L300,320 L260,320 L240,345 L240,380 L200,380 L200,355 L175,355 L175,380 L130,380 L130,350 L110,350 L110,380 Z'
-            },
+            // Font Awesome Solid: cat
             cat: {
-                path: 'M130,110 L210,200 L290,200 L370,110 L395,260 C 395,360 330,420 250,420 C 170,420 105,360 105,260 Z'
+                path: 'M290.6 192.3l11.2-67.2 83.2 0 11.2 67.2L290.6 192.3zM128 448c-17.7 0-32-14.3-32-32L96 288 0 192 32 64l96 64 256 0 96-64 32 128-96 96 0 128c0 17.7-14.3 32-32 32l-32 0 0-64-224 0 0 64-32 0zM224 80c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16-7.2-16-16-16zm128 0c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16-7.2-16-16-16z'
             },
+            // Font Awesome Solid: fish
             fish: {
-                path: 'M20,230 C 80,140 240,120 340,200 L340,160 L430,110 L415,230 L430,350 L340,300 L340,260 C 240,340 80,320 20,230 Z'
+                path: 'M180 80C77.8 80 0 157.3 0 240c0 18.5 6.6 36.5 18 55.1 1.4 2.3 1.4 5.3 0 7.6C6.6 321.5 0 339.5 0 358c0 82.7 77.8 160 180 160 62.5 0 116-36.5 148-86.3L512 544V48L328 166.3C296 116.5 242.5 80 180 80zm220 132.8l-50.3-31.4c-6.7-4.2-15.5-2.2-19.7 4.5l-32 51.2c-2.7 4.3-7.4 6.9-12.5 6.9H120c-8.8 0-16 7.2-16 16s7.2 16 16 16h165.5c5.1 0 9.8 2.6 12.5 6.9l32 51.2c4.2 6.7 13 8.7 19.7 4.5L400 327.2V212.8z'
             },
-            butterfly: {
-                path: 'M250,230 C 100,40 20,140 50,300 C 80,430 200,430 250,290 C 300,430 420,430 450,300 C 480,140 400,40 250,230 Z'
+            // Font Awesome Solid: dove
+            dove: {
+                path: 'M48 0C21.5 0 0 21.5 0 48l0 208c0 114.9 93.1 208 208 208s208-93.1 208-208c0-11.8-1-23.4-2.9-34.7 34.5 7.5 66.3 22.2 94 42.7C530.5 280.6 576 368 576 464c0 26.5-21.5 48-48 48s-48-21.5-48-48c0-80-36-152-93.3-200C418.8 268.2 416 277 416 286.3c0 88.7-72 160.7-160.7 160.7C138.5 447 48 356.5 48 239.7c0-64.5 27.5-122.6 71.4-163.2C83.3 56.9 48 20.1 48 0zm128 120c11 0 20-9 20-20s-9-20-20-20-20 9-20 20 9 20 20 20z'
             },
+            // Font Awesome Solid: star
             star: {
-                path: 'M250,30 L310,190 L480,190 L345,290 L400,460 L250,360 L100,460 L155,290 L20,190 L190,190 Z'
+                path: 'M288 0l85.4 173 190.9 27.7-138.1 134.7 32.6 190.1L288 435.5 117.2 525.5 149.8 335.4 11.7 200.7l190.9-27.7L288 0z'
             },
+            // Font Awesome Solid: bolt (lightning)
             bolt: {
-                path: 'M290,20 L130,250 L230,250 L180,440 L370,210 L260,210 L320,20 Z'
+                path: 'M191.7 0c-15 0-28.8 8.4-35.7 21.8L3.5 291.8C-6.4 311.6 8 335 30.2 335l81.4 0L49.7 489.1C46 498.2 47.2 508.6 52.8 516.6S66.6 528 76 528c10 0 19.4-4.7 25.5-12.6l224-288c7.5-9.6 8.8-22.7 3.3-33.7S313.3 176 301 176l-87.7 0 58.4-116.1C281.6 38.7 266.9 0 240.7 0L191.7 0z'
             },
+            // Font Awesome Solid: crown
             crown: {
-                path: 'M50,150 L140,300 L200,80 L250,320 L300,80 L360,300 L450,150 L430,410 L70,410 Z'
+                path: 'M576 136c0 22.1-17.9 40-40 40-.2 0-.5 0-.7 0L521.5 438.2c-1.8 32.3-28.5 57.8-60.9 57.8L115.4 496c-32.3 0-59.1-25.5-60.9-57.8L40.7 176c-.2 0-.5 0-.7 0-22.1 0-40-17.9-40-40s17.9-40 40-40s40 17.9 40 40c0 13-6.2 24.6-15.9 31.9L126.4 276c8.4 5 19.1 3.7 26.1-3.3l111.6-111.6c-10-7.3-16.4-19.1-16.4-32.3 0-22.1 17.9-40 40-40s40 17.9 40 40c0 13.3-6.5 25.1-16.4 32.3L423 272.6c7 7 17.7 8.4 26.1 3.3l62.2-37.3c-9.8-7.3-15.9-18.9-15.9-31.9 0-22.1 17.9-40 40-40s40 17.9 40 40z'
             },
+            // Font Awesome Solid: tree (pine)
             tree: {
-                path: 'M250,30 L160,170 L210,170 L130,280 L190,280 L100,390 L220,390 L220,440 L280,440 L280,390 L400,390 L310,280 L370,280 L290,170 L340,170 Z'
+                path: 'M210.6 5.9L62 169.4C58 173.7 56 179.1 56 184.6 56 197.4 66.6 208 79.4 208L120 208 14.9 318.9C8.7 325.5 6.1 334.7 8.1 343.6S15.1 359.8 23.9 363.6L152 416 152 456c0 13.3 10.7 24 24 24l128 0c13.3 0 24-10.7 24-24l0-40L456.1 363.6c8.8-3.9 15.1-11.8 17.1-20.7s-.6-18.1-6.8-24.7L360 208 400.6 208c12.8 0 23.4-10.6 23.4-23.4 0-5.5-2-10.9-6-15.3L269.4 5.9C261.8-2 250.2-2 242.6 5.9z'
             },
-            plane: {
-                path: 'M250,20 L225,220 L30,320 L30,360 L225,300 L225,390 L170,430 L170,450 L250,430 L330,450 L330,430 L275,390 L275,300 L470,360 L470,320 L275,220 Z'
+            // Font Awesome Solid: ghost
+            ghost: {
+                path: 'M184 0c-65.7 0-119 53.3-119 119l0 280.1c0 1.8 1.1 3.4 2.7 4.1 1.6 .6 3.6 .3 4.9-1L106.3 366c3.2-3.2 8.4-3.2 11.6 0l39.8 39.8c5.1 5.1 13.4 5.1 18.5 0l41.7-41.7c5.1-5.1 13.4-5.1 18.5 0l41.7 41.7c5.1 5.1 13.4 5.1 18.5 0l41.7-41.7c5.1-5.1 13.4-5.1 18.5 0l41.7 41.7c2.1 2.1 4.9 3 7.6 3 2.7 0 5.5-1 7.6-3l33.8-33.8c1.3-1.3 3.2-1.6 4.9-1 1.6 .6 2.7 2.3 2.7 4.1L515 119C515 53.3 461.7 0 396 0L184 0zm0 128c17.7 0 32 14.3 32 32s-14.3 32-32 32-32-14.3-32-32 14.3-32 32-32zm192 0c17.7 0 32 14.3 32 32s-14.3 32-32 32-32-14.3-32-32 14.3-32 32-32z'
             },
-            italy: {
-                path: 'M180,40 L215,260 L190,295 L205,365 L245,410 L310,420 L360,410 L380,390 L400,420 L440,420 L455,405 L455,375 L420,355 L380,365 L345,330 L320,280 L295,40 Z'
+            // Font Awesome Solid: moon
+            moon: {
+                path: 'M223.5 32C100 32 0 132.3 0 256S100 480 223.5 480 447 379.7 447 256c0-20.9-2.9-41.1-8.4-60.3-9.4-33-53.4-41.8-76.5-15.3-16.5 19-40.9 31.1-68.1 31.1-49.7 0-90-40.3-90-90 0-27.2 12.1-51.6 31.1-68.1 26.5-23.1 17.7-67.1-15.3-76.5C200.3 2.9 223.5 0 223.5 0z'
+            },
+            // Font Awesome Solid: music note
+            note: {
+                path: 'M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7v369.5c0 48-48.4 86.5-112 86.5S288 449.5 288 401.5s48.4-86.5 112-86.5c25.2 0 48.5 6 67.2 16V71.5L192 124.3V432c0 48-48.4 86.5-112 86.5S-32 480 -32 432s48.4-86.5 112-86.5c25.2 0 48.5 6 67.2 16V96c0-14.7 10.4-27.4 24.8-30.2L478.8 .1c9.8-1.9 19.9 1.8 28 5.2z'
+            },
+            // Font Awesome Solid: skull
+            skull: {
+                path: 'M416 398.9C480.1 357.4 512 298.3 512 224 512 100.3 397.4 0 256 0S0 100.3 0 224c0 74.3 31.9 133.4 96 174.9L96 464c0 26.5 21.5 48 48 48l32 0 0-48c0-8.8 7.2-16 16-16s16 7.2 16 16l0 48 64 0 0-48c0-8.8 7.2-16 16-16s16 7.2 16 16l0 48 32 0c26.5 0 48-21.5 48-48l0-65.1zM160 192c26.5 0 48 21.5 48 48s-21.5 48-48 48-48-21.5-48-48 21.5-48 48-48zm192 0c26.5 0 48 21.5 48 48s-21.5 48-48 48-48-21.5-48-48 21.5-48 48-48z'
             }
         };
+
+        // Custom uploaded shape (path string), filled in by the upload handler.
+        let customShapePath = null;
+
+        // Measure a path's bbox with getBBox by briefly attaching it to the DOM.
+        function getPathBBox(d) {
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(svgNS, 'svg');
+            svg.setAttribute('width', '0');
+            svg.setAttribute('height', '0');
+            svg.style.position = 'absolute';
+            svg.style.visibility = 'hidden';
+            const p = document.createElementNS(svgNS, 'path');
+            p.setAttribute('d', d);
+            svg.appendChild(p);
+            document.body.appendChild(svg);
+            let bbox;
+            try { bbox = p.getBBox(); } catch (e) { bbox = { x: 0, y: 0, width: 1, height: 1 }; }
+            document.body.removeChild(svg);
+            return bbox;
+        }
 
         function ean13CheckDigit(first12) {
             const d = first12.split('').map(Number);
@@ -542,7 +651,11 @@
             const data = generateBars(code);
             if (!data) return '<div class="err">Codice non valido</div>';
             const { bars, totalW } = data;
-            const shape = SHAPES[shapeKey];
+
+            const pathD = shapeKey === 'custom'
+                ? customShapePath
+                : (SHAPES[shapeKey] && SHAPES[shapeKey].path);
+            if (!pathD) return '<div class="err">Forma non valida</div>';
 
             const VB_W      = 500;
             const SHAPE_H   = 460;
@@ -550,13 +663,24 @@
             const TEXT_BAND = 34;
             const TOTAL_H   = SHAPE_H + STRIP_H + TEXT_BAND;
 
+            // Fit the shape into the (VB_W x SHAPE_H) canvas, preserving
+            // aspect ratio, centered horizontally and bottom-aligned so it
+            // touches the barcode strip underneath.
+            const bbox = getPathBBox(pathD);
+            const fitScale = Math.min(VB_W / bbox.width, SHAPE_H / bbox.height);
+            const scaledW = bbox.width * fitScale;
+            const scaledH = bbox.height * fitScale;
+            const tx = (VB_W - scaledW) / 2 - bbox.x * fitScale;
+            const ty = SHAPE_H - scaledH - bbox.y * fitScale;
+            const fitTransform = `translate(${tx.toFixed(3)},${ty.toFixed(3)}) scale(${fitScale.toFixed(6)})`;
+
             const clipId = 'clip-' + Math.random().toString(36).slice(2, 8);
 
             const unitW = VB_W / rep;
             const scale = unitW / totalW;
 
             let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB_W} ${TOTAL_H}" role="img" aria-label="Barcode ${code}">`;
-            s += `<defs><clipPath id="${clipId}"><path d="${shape.path}"/></clipPath></defs>`;
+            s += `<defs><clipPath id="${clipId}"><path d="${pathD}" transform="${fitTransform}"/></clipPath></defs>`;
 
             // Shape: bars tiled `rep` times, clipped, filling the full volume.
             s += `<g clip-path="url(#${clipId})">`;
@@ -599,6 +723,56 @@
         [prefissoEl, partiDaEl, tipoEl, shapeEl, repEl].forEach(el => {
             el.addEventListener('input', refresh);
             el.addEventListener('change', refresh);
+        });
+
+        // --- Custom SVG upload ---
+        const uploadInput = document.getElementById('svg-upload');
+        const uploadStatus = document.getElementById('upload-status');
+        const optCustom = document.getElementById('opt-custom');
+
+        function extractPathsFromSvgText(text) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, 'image/svg+xml');
+            if (doc.querySelector('parsererror')) return null;
+            const root = doc.querySelector('svg');
+            if (!root) return null;
+            const paths = Array.from(root.querySelectorAll('path'))
+                .map(p => (p.getAttribute('d') || '').trim())
+                .filter(Boolean);
+            if (!paths.length) return null;
+            // Join multiple paths into a single compound path.
+            return paths.join(' ');
+        }
+
+        uploadInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 1024 * 1024) {
+                uploadStatus.textContent = 'File troppo grande (max 1 MB).';
+                uploadStatus.classList.add('err');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const d = extractPathsFromSvgText(String(reader.result || ''));
+                if (!d) {
+                    uploadStatus.textContent = 'SVG non valido o senza <path>.';
+                    uploadStatus.classList.add('err');
+                    return;
+                }
+                customShapePath = d;
+                optCustom.disabled = false;
+                optCustom.textContent = 'Personalizzato — ' + file.name;
+                shapeEl.value = 'custom';
+                uploadStatus.classList.remove('err');
+                uploadStatus.textContent = 'Caricato: ' + file.name;
+                refresh();
+            };
+            reader.onerror = () => {
+                uploadStatus.textContent = 'Errore di lettura del file.';
+                uploadStatus.classList.add('err');
+            };
+            reader.readAsText(file);
         });
 
         form.addEventListener('submit', (e) => {

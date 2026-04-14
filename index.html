@@ -496,14 +496,8 @@
                             </label>
                             <label class="mini-label">Raggio
                                 <span class="slider-wrap">
-                                    <input type="range" id="radius" min="0" max="12" value="0">
-                                    <span class="val" id="radius-val">0</span>
-                                </span>
-                            </label>
-                            <label class="mini-label">Angolo
-                                <span class="slider-wrap">
-                                    <input type="range" id="angle" min="-180" max="180" value="0">
-                                    <span class="val" id="angle-val">0&deg;</span>
+                                    <input type="range" id="radius" min="0" max="100" value="0">
+                                    <span class="val" id="radius-val">0%</span>
                                 </span>
                             </label>
                         </div>
@@ -554,8 +548,6 @@
         const colorEl    = document.getElementById('color');
         const radiusEl   = document.getElementById('radius');
         const radiusVal  = document.getElementById('radius-val');
-        const angleEl    = document.getElementById('angle');
-        const angleVal   = document.getElementById('angle-val');
         const stage      = document.getElementById('preview-stage');
         const form       = document.getElementById('codifica-form');
 
@@ -692,8 +684,9 @@
         function buildSvg(code, shapeKey, rep, opts) {
             opts = opts || {};
             const color  = opts.color  || '#4a5d3a';
-            const radius = +opts.radius || 0;
-            const angle  = +opts.angle  || 0;
+            // radius is interpreted as a percentage (0-100) of each bar's
+            // half-width, so at 100% every bar becomes a full pill.
+            const radiusPct = Math.max(0, Math.min(100, +opts.radius || 0)) / 100;
 
             const data = generateBars(code);
             if (!data) return '<div class="err">Codice non valido</div>';
@@ -710,32 +703,29 @@
             const TEXT_BAND = 34;
             const TOTAL_H   = SHAPE_H + STRIP_H + TEXT_BAND;
 
-            // Compute rotated bbox so the shape still fits after rotation.
+            // Fit the shape: preserve aspect ratio, center horizontally,
+            // bottom-align so the shape touches the barcode strip.
             const bbox = getPathBBox(pathD);
-            const rad = angle * Math.PI / 180;
-            const cosA = Math.abs(Math.cos(rad));
-            const sinA = Math.abs(Math.sin(rad));
-            const rotW = bbox.width * cosA + bbox.height * sinA;
-            const rotH = bbox.width * sinA + bbox.height * cosA;
-            const fitScale = Math.min(VB_W / rotW, SHAPE_H / rotH);
-            const finalW = rotW * fitScale;
-            const finalH = rotH * fitScale;
-            const cx = bbox.x + bbox.width / 2;
-            const cy = bbox.y + bbox.height / 2;
-            const finalCX = VB_W / 2;
-            const finalCY = SHAPE_H - finalH / 2;
-            // transform: translate to final center, scale, rotate, translate so shape center is at origin
-            const fitTransform =
-                `translate(${finalCX.toFixed(3)},${finalCY.toFixed(3)}) ` +
-                `scale(${fitScale.toFixed(6)}) ` +
-                `rotate(${angle}) ` +
-                `translate(${(-cx).toFixed(3)},${(-cy).toFixed(3)})`;
+            const fitScale = Math.min(VB_W / bbox.width, SHAPE_H / bbox.height);
+            const scaledW = bbox.width * fitScale;
+            const scaledH = bbox.height * fitScale;
+            const tx = (VB_W - scaledW) / 2 - bbox.x * fitScale;
+            const ty = SHAPE_H - scaledH - bbox.y * fitScale;
+            const fitTransform = `translate(${tx.toFixed(3)},${ty.toFixed(3)}) scale(${fitScale.toFixed(6)})`;
 
             const clipId = 'clip-' + Math.random().toString(36).slice(2, 8);
 
             const unitW = VB_W / rep;
             const barScale = unitW / totalW;
-            const rxAttr = radius > 0 ? ` rx="${radius}" ry="${radius}"` : '';
+
+            function barRect(x, y, w, h) {
+                // rx = percent of half-width; ry clamped to half-height so
+                // the corner never exceeds the bar itself.
+                const rx = (w / 2) * radiusPct;
+                const ry = Math.min(rx, h / 2);
+                const rxAttr = rx > 0 ? ` rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}"` : '';
+                return `<rect x="${x.toFixed(2)}" y="${y}" width="${w.toFixed(2)}" height="${h}" fill="${color}"${rxAttr}/>`;
+            }
 
             let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB_W} ${TOTAL_H}" role="img" aria-label="Barcode ${code}">`;
             s += `<defs><clipPath id="${clipId}"><path d="${pathD}" transform="${fitTransform}"/></clipPath></defs>`;
@@ -746,7 +736,7 @@
                 const offX = i * unitW;
                 for (let j = 0; j < bars.length; j++) {
                     const b = bars[j];
-                    s += `<rect x="${(offX + b.x * barScale).toFixed(2)}" y="0" width="${(b.w * barScale).toFixed(2)}" height="${SHAPE_H}" fill="${color}"${rxAttr}/>`;
+                    s += barRect(offX + b.x * barScale, 0, b.w * barScale, SHAPE_H);
                 }
             }
             s += `</g>`;
@@ -757,7 +747,7 @@
                 const offX = i * unitW;
                 for (let j = 0; j < bars.length; j++) {
                     const b = bars[j];
-                    s += `<rect x="${(offX + b.x * barScale).toFixed(2)}" y="${stripY}" width="${(b.w * barScale).toFixed(2)}" height="${STRIP_H}" fill="${color}"${rxAttr}/>`;
+                    s += barRect(offX + b.x * barScale, stripY, b.w * barScale, STRIP_H);
                 }
             }
 
@@ -770,8 +760,7 @@
 
         function refresh() {
             repVal.textContent = repEl.value;
-            radiusVal.textContent = radiusEl.value;
-            angleVal.textContent = angleEl.value + '\u00B0';
+            radiusVal.textContent = radiusEl.value + '%';
             const code = buildCode();
             if (!code) {
                 stage.innerHTML = '<div class="err">Inserisci un prefisso e un Rif. Articolo validi.</div>';
@@ -779,12 +768,11 @@
             }
             stage.innerHTML = buildSvg(code, shapeEl.value, parseInt(repEl.value, 10), {
                 color: colorEl.value,
-                radius: radiusEl.value,
-                angle:  angleEl.value
+                radius: radiusEl.value
             });
         }
 
-        [prefissoEl, partiDaEl, tipoEl, shapeEl, repEl, colorEl, radiusEl, angleEl].forEach(el => {
+        [prefissoEl, partiDaEl, tipoEl, shapeEl, repEl, colorEl, radiusEl].forEach(el => {
             el.addEventListener('input', refresh);
             el.addEventListener('change', refresh);
         });

@@ -371,13 +371,72 @@
         .err { color: #b33; font-size: 13px; }
 
         @media (max-width: 960px) {
-            .card-grid { grid-template-columns: 1fr; }
+            .card-grid { grid-template-columns: 1fr; gap: 22px; }
         }
         @media (max-width: 820px) {
-            .content-grid { grid-template-columns: 1fr; }
-            .main-header { flex-wrap: wrap; }
-            .search-box { order: 3; width: 100%; max-width: none; margin: 10px 0 0; }
-            .preview-controls { grid-template-columns: 1fr; }
+            .content-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .side-nav {
+                flex-direction: row;
+                overflow-x: auto;
+                background: #fff;
+                border: 1px solid #e6eaee;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            .side-nav a {
+                border-left: none;
+                border-bottom: 3px solid transparent;
+                padding: 10px 16px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            .side-nav a.active {
+                border-left-color: transparent;
+                border-bottom-color: #f26334;
+                background: transparent;
+            }
+            .main-header { flex-wrap: wrap; padding: 12px 16px; gap: 12px; }
+            .user-menu span:nth-child(2) { display: none; }
+            .main-nav {
+                padding: 0 16px;
+                gap: 18px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .main-nav a { padding: 12px 2px; font-size: 13px; white-space: nowrap; }
+            .page { padding: 16px; }
+            .card { padding: 18px 16px; }
+            .preview-stage { padding: 12px; min-height: 260px; }
+            .preview-stage svg { max-width: 100%; }
+            .preview-controls { grid-template-columns: 1fr; gap: 12px; }
+            .examples-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 12px;
+            }
+            .example-card { padding: 10px; }
+            .svg-help[open] ul {
+                left: auto;
+                right: 0;
+                min-width: 240px;
+                max-width: calc(100vw - 32px);
+            }
+            .upload-row { flex-direction: column; align-items: stretch; }
+            .upload-btn { justify-content: center; }
+            .form-actions .btn { width: 100%; justify-content: center; }
+            .tipo-row { grid-template-columns: 1fr; gap: 2px; }
+            .tipo-row .tipo-name { color: #2a3f54; font-size: 12px; }
+        }
+        @media (max-width: 480px) {
+            .brand-name { display: none; }
+            .gs1-logo { width: 44px; height: 44px; }
+            .gs1-logo .big { font-size: 18px; }
+            .header-icons { gap: 10px; }
+            .page { padding: 12px; }
+            .card { padding: 14px 12px; }
+            select, input[type="text"], input[type="number"] { font-size: 16px; }
         }
     </style>
 </head>
@@ -486,18 +545,12 @@
                                 </select>
                             </label>
                             <label class="mini-label">Colore
-                                <input type="color" id="color" value="#4a5d3a">
+                                <input type="color" id="color" value="#f26334">
                             </label>
                             <label class="mini-label">Ripetizioni
                                 <span class="slider-wrap">
-                                    <input type="range" id="rep" min="1" max="10" value="3">
-                                    <span class="val" id="rep-val">3</span>
-                                </span>
-                            </label>
-                            <label class="mini-label">Raggio
-                                <span class="slider-wrap">
-                                    <input type="range" id="radius" min="0" max="100" value="0">
-                                    <span class="val" id="radius-val">0%</span>
+                                    <input type="range" id="rep" min="1" max="10" value="4">
+                                    <span class="val" id="rep-val">4</span>
                                 </span>
                             </label>
                         </div>
@@ -546,8 +599,6 @@
         const repEl      = document.getElementById('rep');
         const repVal     = document.getElementById('rep-val');
         const colorEl    = document.getElementById('color');
-        const radiusEl   = document.getElementById('radius');
-        const radiusVal  = document.getElementById('radius-val');
         const stage      = document.getElementById('preview-stage');
         const form       = document.getElementById('codifica-form');
 
@@ -683,10 +734,7 @@
 
         function buildSvg(code, shapeKey, rep, opts) {
             opts = opts || {};
-            const color  = opts.color  || '#4a5d3a';
-            // radius is interpreted as a percentage (0-100) of each bar's
-            // half-width, so at 100% every bar becomes a full pill.
-            const radiusPct = Math.max(0, Math.min(100, +opts.radius || 0)) / 100;
+            const color  = opts.color  || '#f26334';
 
             const data = generateBars(code);
             if (!data) return '<div class="err">Codice non valido</div>';
@@ -719,12 +767,7 @@
             const barScale = unitW / totalW;
 
             function barRect(x, y, w, h) {
-                // rx = percent of half-width; ry clamped to half-height so
-                // the corner never exceeds the bar itself.
-                const rx = (w / 2) * radiusPct;
-                const ry = Math.min(rx, h / 2);
-                const rxAttr = rx > 0 ? ` rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}"` : '';
-                return `<rect x="${x.toFixed(2)}" y="${y}" width="${w.toFixed(2)}" height="${h}" fill="${color}"${rxAttr}/>`;
+                return `<rect x="${x.toFixed(2)}" y="${y}" width="${w.toFixed(2)}" height="${h}" fill="${color}"/>`;
             }
 
             let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB_W} ${TOTAL_H}" role="img" aria-label="Barcode ${code}">`;
@@ -760,19 +803,17 @@
 
         function refresh() {
             repVal.textContent = repEl.value;
-            radiusVal.textContent = radiusEl.value + '%';
             const code = buildCode();
             if (!code) {
                 stage.innerHTML = '<div class="err">Inserisci un prefisso e un Rif. Articolo validi.</div>';
                 return;
             }
             stage.innerHTML = buildSvg(code, shapeEl.value, parseInt(repEl.value, 10), {
-                color: colorEl.value,
-                radius: radiusEl.value
+                color: colorEl.value
             });
         }
 
-        [prefissoEl, partiDaEl, tipoEl, shapeEl, repEl, colorEl, radiusEl].forEach(el => {
+        [prefissoEl, partiDaEl, tipoEl, shapeEl, repEl, colorEl].forEach(el => {
             el.addEventListener('input', refresh);
             el.addEventListener('change', refresh);
         });

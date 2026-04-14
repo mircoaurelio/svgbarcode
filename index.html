@@ -15,15 +15,6 @@
             min-height: 100vh;
         }
 
-        /* Top blue bar */
-        .top-bar {
-            background: #1b3a6b;
-            color: #fff;
-            padding: 10px 24px;
-            font-size: 13px;
-        }
-        .top-bar strong { font-weight: 600; }
-
         /* White header */
         .main-header {
             background: #fff;
@@ -306,11 +297,6 @@
 </head>
 <body>
 
-    <!-- Top blue bar -->
-    <div class="top-bar">
-        Azienda attiva: <strong>GS1 Italy</strong>
-    </div>
-
     <!-- White header -->
     <header class="main-header">
         <div class="logo-wrap">
@@ -412,11 +398,15 @@
                                 <select id="shape">
                                     <option value="heart">Cuore</option>
                                     <option value="horse">Cavallo</option>
-                                    <option value="star">Stella</option>
-                                    <option value="circle">Cerchio</option>
-                                    <option value="diamond">Rombo</option>
+                                    <option value="cat">Gatto</option>
+                                    <option value="fish">Pesce</option>
                                     <option value="butterfly">Farfalla</option>
-                                    <option value="square">Rettangolo</option>
+                                    <option value="star">Stella</option>
+                                    <option value="bolt">Fulmine</option>
+                                    <option value="crown">Corona</option>
+                                    <option value="tree">Pino</option>
+                                    <option value="plane">Aereo</option>
+                                    <option value="italy">Italia</option>
                                 </select>
                             </label>
                             <label class="mini-label">Ripetizioni
@@ -455,20 +445,32 @@
             horse: {
                 path: 'M60,380 L60,340 L100,340 L120,300 L100,270 L120,240 L110,200 L130,170 L160,160 L175,120 L200,100 L225,90 L245,70 L270,60 L300,65 L325,80 L345,110 L360,140 L380,150 L410,155 L440,170 L455,200 L450,230 L430,250 L410,265 L405,290 L415,320 L435,340 L455,360 L455,380 L410,380 L410,355 L380,355 L380,380 L330,380 L330,345 L300,320 L260,320 L240,345 L240,380 L200,380 L200,355 L175,355 L175,380 L130,380 L130,350 L110,350 L110,380 Z'
             },
-            star: {
-                path: 'M250,30 L310,190 L480,190 L345,290 L400,460 L250,360 L100,460 L155,290 L20,190 L190,190 Z'
+            cat: {
+                path: 'M130,110 L210,200 L290,200 L370,110 L395,260 C 395,360 330,420 250,420 C 170,420 105,360 105,260 Z'
             },
-            circle: {
-                path: 'M250,20 A210,210 0 1,0 250,440 A210,210 0 1,0 250,20 Z'
-            },
-            diamond: {
-                path: 'M250,20 L480,230 L250,440 L20,230 Z'
+            fish: {
+                path: 'M20,230 C 80,140 240,120 340,200 L340,160 L430,110 L415,230 L430,350 L340,300 L340,260 C 240,340 80,320 20,230 Z'
             },
             butterfly: {
                 path: 'M250,230 C 100,40 20,140 50,300 C 80,430 200,430 250,290 C 300,430 420,430 450,300 C 480,140 400,40 250,230 Z'
             },
-            square: {
-                path: 'M10,10 L490,10 L490,450 L10,450 Z'
+            star: {
+                path: 'M250,30 L310,190 L480,190 L345,290 L400,460 L250,360 L100,460 L155,290 L20,190 L190,190 Z'
+            },
+            bolt: {
+                path: 'M290,20 L130,250 L230,250 L180,440 L370,210 L260,210 L320,20 Z'
+            },
+            crown: {
+                path: 'M50,150 L140,300 L200,80 L250,320 L300,80 L360,300 L450,150 L430,410 L70,410 Z'
+            },
+            tree: {
+                path: 'M250,30 L160,170 L210,170 L130,280 L190,280 L100,390 L220,390 L220,440 L280,440 L280,390 L400,390 L310,280 L370,280 L290,170 L340,170 Z'
+            },
+            plane: {
+                path: 'M250,20 L225,220 L30,320 L30,360 L225,300 L225,390 L170,430 L170,450 L250,430 L330,450 L330,430 L275,390 L275,300 L470,360 L470,320 L275,220 Z'
+            },
+            italy: {
+                path: 'M180,40 L215,260 L190,295 L205,365 L245,410 L310,420 L360,410 L380,390 L400,420 L440,420 L455,405 L455,375 L420,355 L380,365 L345,330 L320,280 L295,40 Z'
             }
         };
 
